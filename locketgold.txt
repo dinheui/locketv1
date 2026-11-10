@@ -1,0 +1,68 @@
+#!url=https://raw.githubusercontent.com/NightmarketServer/Module-Shadowrocket-NMS/refs/heads/main/Locket%20Filter%20AI/Module%20Locket/LocketvfilterV1.module/dinhconghieu
+#!name=NightMarket Server - Locket Filter (Sửa Lỗi Mất Bạn Bè + Photobooth)
+#!desc= Locket Gold Filter AI - Fixed Friends, Photobooth & RevenueCat
+#!distributor=Nightmarket Server
+#!author=dinhconghieu (@dch_z) + Edited Fix
+# 💬 Discord: https://discord.gg/juY9tw5AJY
+#!icon=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Locket.png
+#!system=ios
+
+[Rule]
+# Chặn QUIC/UDP cho các dịch vụ liên quan
+AND,((DOMAIN,firebaseremoteconfig.googleapis.com),(PROTOCOL,UDP)),REJECT
+AND,((DOMAIN,api.revenuecat.com),(PROTOCOL,UDP)),REJECT
+AND,((DOMAIN,api.locketcamera.com),(PROTOCOL,UDP)),REJECT
+AND,((DOMAIN-SUFFIX,locketcamera.com),(PROTOCOL,UDP)),REJECT
+
+# Chặn Sentry
+DOMAIN-SUFFIX,sentry.io,REJECT
+DOMAIN-SUFFIX,ingest.sentry.io,REJECT
+
+[Header Rewrite]
+# Xóa Cache / ETag trên RevenueCat
+^https?:\/\/api\.revenuecat\.com\/.+\/(receipts|subscribers) header-del x-revenuecat-etag
+^https?:\/\/api\.revenuecat\.com\/.+\/(receipts|subscribers) header-del X-RevenueCat-ETag
+^https?:\/\/api\.revenuecat\.com\/.+\/(receipts|subscribers) header-del if-none-match
+^https?:\/\/api\.revenuecat\.com\/.+\/(receipts|subscribers) header-del If-None-Match
+^https?:\/\/api\.revenuecat\.com\/.+\/(receipts|subscribers) header-del if-modified-since
+^https?:\/\/api\.revenuecat\.com\/.+\/(receipts|subscribers) header-del If-Modified-Since
+
+# Xóa Cache / ETag trên Firebase Remote Config
+^https?:\/\/firebaseremoteconfig\.googleapis\.com\/v1\/projects\/locket-4252a\/.+ header-del if-none-match
+^https?:\/\/firebaseremoteconfig\.googleapis\.com\/v1\/projects\/locket-4252a\/.+ header-del If-None-Match
+^https?:\/\/firebaseremoteconfig\.googleapis\.com\/v1\/projects\/locket-4252a\/.+ header-del if-modified-since
+^https?:\/\/firebaseremoteconfig\.googleapis\.com\/v1\/projects\/locket-4252a\/.+ header-del If-Modified-Since
+^https?:\/\/firebaseremoteconfig\.googleapis\.com\/v1\/projects\/locket-4252a\/.+ header-del x-goog-if-none-match
+
+# Xóa Cache / ETag trên Locket Camera API
+^https?:\/\/api\.locketcamera\.com\/generateFilteredImage header-del if-none-match
+^https?:\/\/api\.locketcamera\.com\/generateFilteredImage header-del If-None-Match
+^https?:\/\/api\.locketcamera\.com\/generateFilteredImage header-del if-modified-since
+^https?:\/\/api\.locketcamera\.com\/generateFilteredImage header-del If-Modified-Since
+
+[Script]
+# Xóa Header yêu cầu từ RevenueCat và Firebase
+deleteHeader_RC = type=http-request,pattern=^https?:\/\/api\.revenuecat\.com\/.+\/(receipts|subscribers),script-path=https://raw.githubusercontent.com/NightmarketServer/Module-Shadowrocket-NMS/refs/heads/main/Locket%20Filter%20AI/js/deleteHeader_RC.js,timeout=60
+
+deleteHeader_Firebase = type=http-request,pattern=^https?:\/\/firebaseremoteconfig\.googleapis\.com\/v1\/projects\/locket-4252a\/.+,script-path=https://raw.githubusercontent.com/NightmarketServer/Module-Shadowrocket-NMS/refs/heads/main/Locket%20Filter%20AI/js/deleteHeader_Firebase.js,timeout=60
+
+# Locket Gold - Kích hoạt quyền thuê bao (RevenueCat)
+revenuecat = type=http-response,pattern=^https?:\/\/api\.revenuecat\.com\/.+\/(receipts|subscribers),script-path=https://raw.githubusercontent.com/NightmarketServer/Module-Shadowrocket-NMS/refs/heads/main/Locket%20Filter%20AI/js/evenuecat.js,requires-body=true,max-size=-1,timeout=60
+
+# Locket Firebase Remote Config Fix
+locket_rc = type=http-response,pattern=^https:\/\/firebaseremoteconfig\.googleapis\.com\/v1\/projects\/locket-4252a\/.+,script-path=https://raw.githubusercontent.com/NightmarketServer/Module-Shadowrocket-NMS/refs/heads/main/Locket%20Filter%20AI/js/locketfix.js?v=20261110_fix,requires-body=true,max-size=-1,timeout=60
+
+# Photobooth Engine (CHỈ bắt generateFilteredImage + photobooth, KHÔNG đụng đến post/feed bạn bè)
+locket_pb_req = type=http-request,pattern=^https?:\/\/(us‑central1‑locket‑4252a\.cloudfunctions\.net|api\.locketcamera\.com)\/(generateFilteredImage|.*photobooth.*),script-path=https://raw.githubusercontent.com/NightmarketServer/Module‑Shadowrocket‑NMS/refs/heads/main/Locket%20Filter%20AI/js/locket_pb_req.js?v=20261110_fix,timeout=60
+
+# Locket Huy hiệu Profile
+locket_change_profile = type=http-request,pattern=^https:\/\/api\.locketcamera\.com\/changeProfileInfo,script-path=https://raw.githubusercontent.com/NightmarketServer/Module‑Shadowrocket‑NMS/refs/heads/main/Locket%20Filter%20AI/js/locket_change_profile.js?v=20261110_fix,timeout=60
+
+# ✅ SỬA QUAN TRỌNG: XÓA pattern cũ bắt rộng post/filter gây mất bạn bè, chỉ giữ cho filter ảnh (nếu cần, bạn có thể tắt luôn cái dòng bên dưới cho ổn nhất)
+# locket_filter_resp = type=http-response,pattern=^https?:\/\/api\.locketcamera\.com\/(v[0‑9]+\/)?(filter|post),requires-body=true,max-size=-1,script-path=https://raw.githubusercontent.com/NightmarketServer/Module‑Shadowrocket‑NMS/refs/heads/main/Locket%20Filter%20AI/js/locket_filter_resp.js?v=20261110_fix,timeout=60
+
+[Host]
+firebaseremoteconfigrealtime.googleapis.com = 0.0.0.0
+
+[MITM]
+hostname = %APPEND% api.revenuecat.com, firebaseremoteconfig.googleapis.com, api.locketcamera.com, *.locketcamera.com, us‑central1‑locket‑4252a.cloudfunctions.net
